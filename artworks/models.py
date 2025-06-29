@@ -8,7 +8,7 @@ visibility_choices = [
 
 class Artworks(models.Model):
   id = models.AutoField(primary_key=True)
-  user_id = models.ForeignKey(User, on_delete=models.CASCADE)
+  user = models.ForeignKey(User, on_delete=models.CASCADE)
   title = models.CharField(max_length=50, null=False)
   description = models.TextField(null=False)
   image = models.ImageField(upload_to="artworks/")
