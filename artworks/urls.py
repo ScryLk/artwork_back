@@ -23,6 +23,7 @@ urlpatterns = [
     path("delete/<int:id>", views.DeleteArtWork, name="DeleteArtWork"),
     path("edit/<int:id>", views.EditArtWork, name="EditArtWork"),
     path("<int:id>/", views.GetArtWorkById, name="GetArtWorkById"),
+    path("home/", views.GetArtWorkByUser, name="GetArtWorkByUser")
     
     
 ]

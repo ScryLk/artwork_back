@@ -4,7 +4,6 @@ import json
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 
-
 def GetAllArtWorks(request):
   if request.method == "GET":
     try:
@@ -69,7 +68,6 @@ def GetArtWorkById(request, id):
         else:
             return JsonResponse({"error": "User not authenticated"}, status=401)    
 
-
 @csrf_exempt
 def DeleteArtWork(request, id):
   if request.method == "DELETE":
@@ -104,6 +102,30 @@ def EditArtWork(request, id):
                 return JsonResponse({"error": str(e)}, status=500)
         else:
           return JsonResponse({"error": "User not authenticated"}, status=401)
+
+@csrf_exempt
+def GetArtWorkByUser(request):
+    if request.method == "GET":
+        if request.user.is_authenticated:
+            try:
+                artworks = Artworks.objects.filter(user=request.user)
+                data = [
+                    {
+                        "id": artwork.id,
+                        "title": artwork.title,
+                        "description": artwork.description,
+                        "image": artwork.image.url,
+                        "created_at": artwork.created_at,
+                        "updated_at": artwork.updated_at,
+                        "visibility": artwork.visibility
+                    }
+                    for artwork in artworks
+                ]
+                return JsonResponse({"success": data})
+            except Exception as e:
+                return JsonResponse({"error": str(e)}, status=500)
+        else:
+            return JsonResponse({"error": "User not authenticated"}, status=401)
       
       
    

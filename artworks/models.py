@@ -15,3 +15,6 @@ class Artworks(models.Model):
   created_at = models.DateTimeField(auto_now_add=True)
   updated_at = models.DateTimeField(auto_now=True)
   visibility = models.CharField(choices=visibility_choices, max_length=10)
+  
+  class Meta:
+    db_table = "artworks"

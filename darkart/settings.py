@@ -33,7 +33,8 @@ ALLOWED_HOSTS = []
 
 MY_APPS = [
     'users',
-    'artworks'
+    'artworks',
+    'comments'
 ]
 
 THIRD_PARTY_APPS = []
