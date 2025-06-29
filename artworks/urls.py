@@ -19,5 +19,10 @@ from . import views, models
 
 urlpatterns = [
     path("", views.GetAllArtWorks, name="GetAllArtWorks"),
-    path("create/", views.AddArtWorks, name="AddArtWorks")
+    path("create/", views.AddArtWorks, name="AddArtWorks"),
+    path("delete/<int:id>", views.DeleteArtWork, name="DeleteArtWork"),
+    path("edit/<int:id>", views.EditArtWork, name="EditArtWork"),
+    path("<int:id>/", views.GetArtWorkById, name="GetArtWorkById"),
+    
+    
 ]

@@ -13,7 +13,7 @@ def GetAllArtWorks(request):
           "id": artwork.id,
           "title": artwork.title,
           "desciption": artwork.description,
-          "image": artwork.image,
+          "image": artwork.image.url,
           "created_at": artwork.created_at,
           "updated_at": artwork.updated_at,
           "visibility": artwork.visibility
@@ -45,4 +45,66 @@ def AddArtWorks(request):
                 return JsonResponse({"error": str(e)}, status=500)
         else:
             return JsonResponse({"error": "User not authenticated"}, status=401)
+
+@csrf_exempt
+def GetArtWorkById(request, id):
+    if request.method == "GET":
+        if request.user.is_authenticated:
+          try:
+              artwork = Artworks.objects.get(id=id)
+              data = {
+                  "id": artwork.id,
+                  "title": artwork.title,
+                  "description": artwork.description,  
+                  "image": artwork.image.url,
+                  "created_at": artwork.created_at,
+                  "updated_at": artwork.updated_at,
+                  "visibility": artwork.visibility
+              }
+              return JsonResponse({"success": data})
+          except Artworks.DoesNotExist:
+              return JsonResponse({"error": "artwork do not exist"}, status=404)
+          except Exception as e:
+              return JsonResponse({"error": str(e)}, status=500)
+        else:
+            return JsonResponse({"error": "User not authenticated"}, status=401)    
+
+
+@csrf_exempt
+def DeleteArtWork(request, id):
+  if request.method == "DELETE":
+    if request.user.is_authenticated:
+      try:
+        artwork = Artworks.objects.filter(id=id)
+        if not artwork:
+          return JsonResponse({"error": "artwork do not exist"})
+        else:
+          artwork.delete()
+          return JsonResponse({"success": "artwork deleted with success"})
+      except Exception as e:
+          return JsonResponse({"error": str(e)}, status=500)
+    else:
+      return JsonResponse({"error": "User not authenticated"}, status=401)
+
+@csrf_exempt
+def EditArtWork(request, id):
+    if request.method == "PUT":
+        if request.user.is_authenticated:
+            try:
+                artwork = Artworks.objects.filter(id=id).first()
+                if not artwork:
+                    return JsonResponse({"error": "artwork do not exist"})
+                data = json.loads(request.body)
+                artwork.title = data.get("title", artwork.title)
+                artwork.description = data.get("description", artwork.description)
+                artwork.visibility = data.get("visibility", artwork.visibility)
+                artwork.save()
+                return JsonResponse({"success": "artwork editada com sucesso"})
+            except Exception as e:
+                return JsonResponse({"error": str(e)}, status=500)
+        else:
+          return JsonResponse({"error": "User not authenticated"}, status=401)
+      
+      
+   
         
