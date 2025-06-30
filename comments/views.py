@@ -3,6 +3,7 @@ from .models import Comments
 import json
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
+from django.contrib.auth.models import User
 
 @csrf_exempt
 def AddComments(request, artwork_id):
@@ -36,8 +37,9 @@ def GetAllComments(request, artwork_id):
             "id": comment.id,
             "content": comment.content,
             "created_at": comment.created_at,
+            "updated_at": comment.updated_at,
             "artwork_id": comment.artwork.id,
-            "user_id": comment.artwork.id
+            "user_id": comment.user.id
           }
         for comment in Comments.objects.filter(artwork_id=artwork_id)
         ]
@@ -77,9 +79,50 @@ def DeleteComment(request, comment_id):
           return JsonResponse({"error": "Comment not found"}, status=404)
         else:
           comment.delete()
-          return JsonResponse({"success": "artwork deleted with success"})
+          return JsonResponse({"success": "Comment deleted with success"})
       except Exception as e:
                 return JsonResponse({"error": str(e)}, status=500)
     else:
         return JsonResponse({"error": "User not authenticated"}, status=401)
-      
+
+@csrf_exempt
+def EditComment(request, comment_id):
+  if request.method == "PUT":
+    if request.user.is_authenticated:
+      try:
+        comment = Comments.objects.filter(id=comment_id).first()
+        if not comment:
+          return JsonResponse({"error": "Comment not found"}, status=404)
+        else:
+          data = json.loads(request.body)
+          comment.content = data.get("content", comment.content)
+          comment.save()
+          return JsonResponse({"success": "Comment edit with successfully"})
+      except Exception as e:
+          return JsonResponse({"error": str(e)}, status=500)
+    else:
+        return JsonResponse({"error": "User not authenticated"}, status=401)
+
+def GetCommentsByUser(request, user_id):
+  if request.method == "GET":
+    if request.user.is_authenticated:
+      try:
+        comments = Comments.objects.filter(user_id=user_id)
+        comment_data = [
+          {
+            "id": comment.id,
+            "content": comment.content,
+            "created_at": comment.created_at,
+            "updated_at": comment.updated_at,
+            "artwork_id": comment.artwork_id,
+            "user_id": comment.user_id,
+          }
+          for comment in comments
+        ]
+        return JsonResponse({"success": comment_data})
+      except Exception as e:
+          return JsonResponse({"error": str(e)}, status=500)
+    else:
+        return JsonResponse({"error": "User not authenticated"}, status=401)
+
+        

@@ -18,6 +18,11 @@ from django.urls import path
 from . import views, models
 
 urlpatterns = [
-    path('login/', views.login, name="login"),
-    path('register/', views.register, name="register")
+    path('login/', views.Login, name="login"),
+    path('register/', views.Register, name="register"),
+    path("", views.GetAllUsers, name="GetAllUsers"),
+    path("<int:user_id>", views.GetUserById, name="GetUserById"),
+    path("delete/<int:user_id>/", views.DeleteUser, name="DeleteUser"),
+    path("edit/<int:user_id>/", views.EditUser, name="EditUser"),
+    
 ]
