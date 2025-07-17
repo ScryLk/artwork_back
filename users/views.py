@@ -5,6 +5,20 @@ from password_strength import PasswordPolicy
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate, login as auth_login
+from django.core.mail import EmailMessage, get_connection
+from django.contrib.auth import get_user_model
+from django.conf import settings
+from django.utils.http import urlsafe_base64_encode
+from django.utils.encoding import force_bytes
+from django.urls import reverse
+from django.contrib.auth.tokens import default_token_generator
+from uuid import uuid4
+import os
+import string
+import random
+
+
+User = get_user_model()
 
 policy = PasswordPolicy.from_names(
     length=8,  # min length: 8
@@ -13,40 +27,76 @@ policy = PasswordPolicy.from_names(
     special=1,  # need min. 2 special characters
 )
 
+def generate_confirmation_token(length=6):
+    chars = string.ascii_uppercase + string.digits
+    return ''.join(random.choices(chars, k=length))
+
+def send_confirmation_email(email, username, user, new_token):
+    confirm_url = f"{settings.FRONTEND_URL}/confirm-register/{user.id}"
+    subject = "Confirmação de cadastro"
+    message = (
+        f"Olá {username}, seu cadastro foi realizado com sucesso!\n\n"
+        f"Confirmation token: {new_token}"
+        f"Confirm url: {confirm_url}"
+        
+    )
+    from_email = "onboarding@resend.dev"
+    recipient_list = [email]
+    with get_connection(
+        host=settings.RESEND_SMTP_HOST,
+        port=settings.RESEND_SMTP_PORT,
+        username=settings.RESEND_SMTP_USERNAME,
+        password=settings.RESEND_URL_API_KEY,
+        use_tls=True,
+    ) as connection:
+        EmailMessage(
+            subject=subject,
+            body=message,
+            to=recipient_list,
+            from_email=from_email,
+            connection=connection
+        ).send()
+
 @csrf_exempt
 def Login(request):
-    if request.method == "GET":
-        return HttpResponse("Eai")
-    if request.method == "POST":
-        data = json.loads(request.body)
-        username = data.get("username")  
-        password = data.get("password")
-        user = authenticate(request, username=username, password=password)
-        if user is not None:
-            auth_login(request, user)
-            return JsonResponse({"success": "user authenticated with success"}, status=200)
-        else:
-            return JsonResponse({"error": "user authentication failed"}, status=400)
+    if request.method != "POST":
+        return JsonResponse({"error": "Method not allowed"}, status=405)
+    data = json.loads(request.body)
+    username = data.get("username")  
+    password = data.get("password")
+    user = authenticate(request, username=username, password=password)
+    if user is not None:
+        if not getattr(user, "is_confirmed", False):
+            return JsonResponse({"error": "E-mail not confirmed. Please confirm your e-mail before logging in."}, status=403)
+        auth_login(request, user)
+        return JsonResponse({"success": "User authenticated successfully"}, status=200)
+    else:
+        return JsonResponse({"error": "Invalid credentials"}, status=401)
         
 @csrf_exempt
 def Register(request):
-  if request.method == "POST":
-    data = json.loads(request.body)
-    username = data.get("username")
-    email = data.get("email")
-    password = data.get("password")
-  if not username:
-    return JsonResponse({"error": "must be a valid username"}, status=400)
-  if policy.test(password):
-    return JsonResponse({"error": "must be a valid password"}, status=400)
-  if User.objects.filter(email=email).exists():
-    return JsonResponse({"error": "email address already exists"}, status=400)
-  new_user = User(username=username, email=email, password=password)
-  new_user.set_password(password)
-  new_user.save()
-  return HttpResponse({"success": "register vailed succesfull"}, status=200)
+    if request.method == "POST":
+        data = json.loads(request.body)
+        username = data.get("username")
+        email = data.get("email")
+        password = data.get("password")
+        if not username:
+            return JsonResponse({"error": "must be a valid username"}, status=400)
+        if policy.test(password):
+            return JsonResponse({"error": "must be a valid password"}, status=400)
+        if User.objects.filter(email=email).exists():
+            return JsonResponse({"error": "email address already exists"}, status=400)
+        try:
+            new_token = generate_confirmation_token()
+            new_user = User(username=username, email=email, is_active=True, confirmation_token=new_token)
+            new_user.set_password(password)
+            new_user.save()
+            send_confirmation_email(email, username, new_user, new_token)
+            return JsonResponse({"success": "register valid successful"}, status=200)
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)
 
-
+@csrf_exempt
 def GetAllUsers(request):
   if request.method == "GET":
     if request.user.is_authenticated:
@@ -140,6 +190,33 @@ def EditUser(request, user_id):
                 return JsonResponse({"error": str(e)}, status=500)
         else:
             return JsonResponse({"error": "User not authenticated"}, status=401)
+
+@csrf_exempt
+def ConfirmRegister(request, user_id):
+  if request.method == "POST":
+    try:
+      user = User.objects.filter(id=user_id).first()
+      if not user:
+        return JsonResponse({"error": "user not found"}, status=400)
+      if user.is_confirmed == True:
+        return JsonResponse({"error": "account already confirmed"}, status=401)
+      data = json.loads(request.body)
+      confirmation_token = data.get("confirmation_token")
+      user_expected_token = user.confirmation_token
+      if confirmation_token != user_expected_token:
+        return JsonResponse({"error": "confirmation token invalid"}, status=400)
+      else:
+        user.is_confirmed = True
+        user.save()
+        return JsonResponse({"success": "account confirmed with successfuly"}, status=200)
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
+      
+      
+
+  
+          
+
       
 
           

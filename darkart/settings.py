@@ -12,19 +12,27 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 from pathlib import Path
 import os       
+import environ
+
+env = environ.Env(
+    # set casting, default value
+    DEBUG=(bool, False)
+)
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-_#*#$89ku5ybhlq3!jyd=8!xy746iqkotukbss(j(4d6oc0zlx'
+SECRET_KEY = env('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = env("DEBUG")
 
 ALLOWED_HOSTS = []
 
@@ -35,10 +43,10 @@ MY_APPS = [
     'users',
     'artworks',
     'comments',
-    'likes'
+    'likes',
 ]
 
-THIRD_PARTY_APPS = []
+THIRD_PARTY_APPS = ['corsheaders']
 
 DJANGO_APPS = [   
         'django.contrib.admin',
@@ -51,10 +59,16 @@ DJANGO_APPS = [
 
 INSTALLED_APPS = MY_APPS + DJANGO_APPS + THIRD_PARTY_APPS
 
+CORS_ALLOW_ALL_ORIGINS = False
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5173",
+]
+CORS_ALLOW_CREDENTIALS = True
 
 
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',  
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -89,11 +103,12 @@ WSGI_APPLICATION = 'darkart.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
+        'ENGINE': env("DATABASE_URL"),
         'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
 
+AUTH_USER_MODEL = 'users.CustomUser'
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
@@ -138,3 +153,11 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+RESEND_SMTP_PORT = 587
+RESEND_SMTP_USERNAME = 'resend'
+RESEND_SMTP_HOST = 'smtp.resend.com'
+RESEND_URL_API_KEY = env("RESEND_URL_API_KEY")
+FRONTEND_URL = env("FRONTEND_URL")
