@@ -31,14 +31,17 @@ def generate_confirmation_token(length=6):
     chars = string.ascii_uppercase + string.digits
     return ''.join(random.choices(chars, k=length))
 
-def send_confirmation_email(email, username, user, new_token):
+def generate_reset_token(length=6):
+    chars = string.ascii_uppercase + string.digits
+    return ''.join(random.choices(chars, k=length))
+
+def SendConfirmationEmail(email, username, user, new_token):
     confirm_url = f"{settings.FRONTEND_URL}/confirm-register/{user.id}"
     subject = "Confirmação de cadastro"
     message = (
         f"Olá {username}, seu cadastro foi realizado com sucesso!\n\n"
         f"Confirmation token: {new_token}"
         f"Confirm url: {confirm_url}"
-        
     )
     from_email = "onboarding@resend.dev"
     recipient_list = [email]
@@ -56,6 +59,35 @@ def send_confirmation_email(email, username, user, new_token):
             from_email=from_email,
             connection=connection
         ).send()
+
+def SendRestorePasswordEmail(email, user):
+  username = user.username
+  subject = "Recuperar Senha"
+  reset_token = generate_reset_token()
+  user.reset_token = reset_token
+  restore_url = f"{settings.FRONTEND_URL}/users/login/restorepassword/{reset_token}"
+  user.save()
+  message = (
+    f"Olá {username} sua solicitação de recuperação de senha foi realizada com sucesso "
+    f"{restore_url}"
+  )
+  from_email = "onboarding@resend.dev"
+  recipient_list = [email]
+  with get_connection(
+    host=settings.RESEND_SMTP_HOST,
+    port=settings.RESEND_SMTP_PORT,
+    username=settings.RESEND_SMTP_USERNAME,
+    password=settings.RESEND_URL_API_KEY,
+    use_tls=True,
+    ) as connection:
+    EmailMessage(
+      subject=subject,
+      body=message,
+      to=recipient_list,
+      from_email=from_email,
+      connection=connection
+  ).send()
+
 
 @csrf_exempt
 def Login(request):
@@ -91,7 +123,7 @@ def Register(request):
             new_user = User(username=username, email=email, is_active=True, confirmation_token=new_token)
             new_user.set_password(password)
             new_user.save()
-            send_confirmation_email(email, username, new_user, new_token)
+            SendConfirmationEmail(email, username, new_user, new_token)
             return JsonResponse({"success": "register valid successful"}, status=200)
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=500)
@@ -211,17 +243,34 @@ def ConfirmRegister(request, user_id):
         return JsonResponse({"success": "account confirmed with successfuly"}, status=200)
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=500)
-      
-      
 
+@csrf_exempt
+def RestorePassword(request):
+  if request.method == "POST":
+    try:
+      data = json.loads(request.body)
+      email = data.get("email")
+      user = User.objects.filter(email=email).first()
+      if not user:
+        return JsonResponse({"error": "user do not exist"})
+      SendRestorePasswordEmail(email, user)
+      return JsonResponse({"success": "e-mail send with successfuly"})
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
   
-          
-
-      
-
-          
-          
-
-
-
-      
+@csrf_exempt  
+def SetNewPassword(request, reset_token):
+  if request.method == "PUT":
+    try:
+      data = json.loads(request.body)
+      user = User.objects.filter(reset_token=reset_token).first()
+      if not user:
+        return JsonResponse({"error": "User do not exist"})
+      new_password = data.get("password")
+      if policy.test(new_password):
+          return JsonResponse({"error": "must be a valid password"}, status=400)
+      user.password = new_password
+      user.save()
+      return JsonResponse({"success": "password changed with succesfully"}, status=200)
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)

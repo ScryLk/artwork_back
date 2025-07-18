@@ -24,5 +24,7 @@ urlpatterns = [
     path("<int:user_id>", views.GetUserById, name="GetUserById"),
     path("delete/<int:user_id>/", views.DeleteUser, name="DeleteUser"),
     path("edit/<int:user_id>/", views.EditUser, name="EditUser"),
-    path("register/confirmation/<int:user_id>", views.ConfirmRegister, name="ConfirmRegister")    
+    path("register/confirmation/<int:user_id>", views.ConfirmRegister, name="ConfirmRegister"),
+    path("login/restorepassword/", views.RestorePassword, name="RestorePassword"),    
+    path("login/restorepassword/<str:reset_token>", views.SetNewPassword, name="SetNewPassword")    
 ]

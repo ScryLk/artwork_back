@@ -6,4 +6,4 @@ from django.db import models
 class CustomUser(AbstractUser):
   confirmation_token = models.TextField(default=False)
   is_confirmed = models.BooleanField(default=False)
-  
+  reset_token = models.CharField(max_length=64, blank=True, null=True)  
